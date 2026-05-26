@@ -1,7 +1,7 @@
 # PoE 2 Passive Tree Viewer
 
 Single-file HTML viewer for the Path of Exile 2 passive skill tree (v0.5.0).
-You can use the online version of my project too (thanks to whoever made that) : https://natwarth.github.io/poe2-skilltree/ 
+
 ## Usage
 
 Open `poe2-passive-tree.html` in any modern browser. Everything is embedded — no server, no install.
@@ -27,3 +27,7 @@ For nodes in the "Changed" category, the tooltip shows the v0.4 stats struck thr
 ## Data
 
 Built from the official Grinding Gear Games exports: [`poe2-skilltree-export`](https://github.com/grindinggear/poe2-skilltree-export), versions 0.4.0 and 0.5.0.
+
+
+
+You can use the online version of my project too (thanks to whoever made that) : https://natwarth.github.io/poe2-skilltree/ 
