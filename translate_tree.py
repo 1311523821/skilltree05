@@ -262,7 +262,6 @@ STAT_TERMS = {
     'On Block': '格挡时',
     'On Critical': '暴击时',
     'On Death': '死亡时',
-    'While': '当...时',
     'Nearby': '附近',
     'Enemies': '敌人',
     'Enemy': '敌人',
@@ -332,7 +331,7 @@ STAT_TERMS = {
 
     # Status/state
     'Stationary': '静止',
-    'Moving': '移动中',
+
     'Full Life': '满血',
     'Low Life': '低血',
     'Full Mana': '满魔',
@@ -597,8 +596,6 @@ STAT_TERMS = {
     'Gaining': '获得',
     'Gain': '获得',
     'against': '对抗',
-    'while': '时',
-    'when': '当',
     'Force': '之力',
     'Hits': '击中',
     'Resistance': '抗性',
@@ -674,7 +671,7 @@ STAT_TERMS = {
     'Bronze': '青铜',
     'Leather': '皮革',
     'Silk': '丝绸',
-    'Chain': '锁链',
+
     'Plate': '板甲',
     'Scale': '鳞甲',
     'Cloth': '布甲',
@@ -1360,7 +1357,7 @@ DIRECT_NAMES = {
     'Club': '棍棒',
     'Flail': '连枷',
     'Whip': '鞭',
-    'Chain': '锁链',
+
     'Rope': '绳索',
     'Net': '网',
     'Hook': '钩',
@@ -2069,6 +2066,22 @@ DIRECT_NAMES = {
     "Wyvern's Breath": '飞龙吐息',
     'Zealous Inquisition': '狂热审判',
     'Zone of Control': '控制区域',
+
+    # Names that rely on and/All (lost when removed from _SAFE_SHORT)
+    'All Natural': '浑然天成',
+    'Jack of all Trades': '万事通',
+    'Judge, Jury, and Executioner': '审判、陪审与行刑者',
+    'Known by All': '众所周知',
+    'Lust for Sacrifice': '献祭之欲',
+    'Marked for Death': '死亡标记',
+    'Marked for Sickness': '疾病标记',
+    'Now and Again': '时不时',
+    'Pin and Run': '定身即跑',
+    'Run and Gun': '边跑边射',
+    'Spray and Pray': '扫射祈祷',
+    'Stand and Deliver': '站稳输出',
+    '...and Protect me from Harm': '...护我免于伤害',
+    '...and Scatter Them to the Winds': '...将他们驱散于风中',
 }
 
 
@@ -2088,12 +2101,8 @@ _SHORT_NOISE = {'per', 'to', 'on', 'if', 'in', 'of', 'or', 'the',
 
 # Safe short words that CAN be translated via word-boundary matching
 _SAFE_SHORT = {
-    'and': '和',
-    'vs': '对',
     'Low': '低',
     'low': '低',
-    'All': '全部',
-    'all': '全部',
     'Hit': '击中',
     'hit': '击中',
     'Bow': '弓',
@@ -2101,11 +2110,6 @@ _SAFE_SHORT = {
     'One': '一',
     'Two': '双',
     'two': '双',
-    'You': '你',
-    'you': '你',
-    'for': '为',
-    'the': '',
-    'The': '',
     'Self': '自身',
     'self': '自身',
     'Axe': '斧',
@@ -2230,7 +2234,9 @@ def translate_stat_string(stat):
 
 def translate_flavour(text):
     """Translate flavour text."""
-    return translate_text(text)
+    result = translate_text(text)
+    result = re.sub(r'\s+', ' ', result).strip()
+    return result
 
 
 # ============================================================
