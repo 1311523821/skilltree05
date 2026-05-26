@@ -2,9 +2,11 @@
 
 Path of Exile 2 被动技能树的单文件 HTML 查看器（v0.5.0）。
 
+**在线演示：** [https://1311523821.github.io/skilltree05/](https://1311523821.github.io/skilltree05/)
+
 ## 使用方法
 
-在任何现代浏览器中打开 `poe2-passive-tree_8.zh-CN.html`（中文版）或 `poe2-passive-tree_8.html`（英文版）。所有内容均已内嵌 — 无需服务器，无需安装。
+直接访问上面的在线演示链接（自动跳转中文版），或在任何现代浏览器中打开 `poe2-passive-tree_8.zh-CN.html`（中文版）或 `poe2-passive-tree_8.html`（英文版）。所有内容均已内嵌 — 无需服务器，无需安装。
 
 ## 功能
 
