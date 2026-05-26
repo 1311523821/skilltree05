@@ -1,0 +1,1802 @@
+#!/usr/bin/env python3
+"""Translate poe2-passive-tree HTML file to Chinese."""
+
+import json
+import re
+import sys
+from pathlib import Path
+
+SRC = Path('D:/Agent/skilltree05/poe2-passive-tree_8.html')
+DST = Path('D:/Agent/skilltree05/poe2-passive-tree_8.zh-CN.html')
+
+# ============================================================
+# TERM DICTIONARY — POE2 core terminology
+# ============================================================
+
+# Stats / attributes
+STAT_TERMS = {
+    'Strength': '力量',
+    'Dexterity': '敏捷',
+    'Intelligence': '智慧',
+    'Life': '生命',
+    'Mana': '魔力',
+    'Energy Shield': '能量护盾',
+    'EnergyShield': '能量护盾',
+    'Armour': '护甲',
+    'ItemArmour': '物品护甲',
+    'Evasion': '闪避',
+    'Evasion Rating': '闪避值',
+    'ItemEvasion': '物品闪避',
+    'ItemEnergyShield': '物品能量护盾',
+    'Spirit': '灵魂',
+    'Spirit|Spirit': '灵魂',
+
+    # Damage types
+    'Physical Damage': '物理伤害',
+    'Physical': '物理',
+    'Fire Damage': '火焰伤害',
+    'Fire': '火焰',
+    'Cold Damage': '冰霜伤害',
+    'Cold': '冰霜',
+    'Lightning Damage': '闪电伤害',
+    'Lightning': '闪电',
+    'Chaos Damage': '混沌伤害',
+    'Chaos': '混沌',
+    'Elemental Damage': '元素伤害',
+    'Elemental': '元素',
+
+    # Resistance
+    'Fire Resistance': '火焰抗性',
+    'Cold Resistance': '冰霜抗性',
+    'Lightning Resistance': '闪电抗性',
+    'Chaos Resistance': '混沌抗性',
+    'Elemental Resistance': '元素抗性',
+    'MaximumResistances': '最大抗性',
+    'Maximum Cold Resistance': '最大冰霜抗性',
+    'Maximum Fire Resistance': '最大火焰抗性',
+    'Maximum Lightning Resistance': '最大闪电抗性',
+    'Maximum Chaos Resistance': '最大混沌抗性',
+    'All Elemental Resistances': '全部元素抗性',
+    'All Maximum Resistances': '全部最大抗性',
+
+    # Mechanics
+    'Attack': '攻击',
+    'Attack Damage': '攻击伤害',
+    'Attack Speed': '攻击速度',
+    'Spell Damage': '法术伤害',
+    'Spell': '法术',
+    'Cast Speed': '施法速度',
+    'Critical Hit Chance': '暴击几率',
+    'Critical Strike Chance': '暴击几率',
+    'Critical Hit': '暴击',
+    'Critical Strike': '暴击',
+    'Critical': '暴击',
+    'Critical Damage Bonus': '暴击伤害加成',
+    'CriticalDamageBonus': '暴击伤害加成',
+    'Critical Chance': '暴击几率',
+    'Critical Multiplier': '暴击倍率',
+    'Hit': '击中',
+    'Hit Damage': '击中伤害',
+    'HitDamage': '击中伤害',
+    'Damage': '伤害',
+    'Damage over Time': '持续伤害',
+    'Minion Damage': '召唤物伤害',
+    'Totem Damage': '图腾伤害',
+    'Trap Damage': '陷阱伤害',
+    'Mine Damage': '地雷伤害',
+
+    # Defence
+    'Block Chance': '格挡几率',
+    'Block': '格挡',
+    'Dodge': '闪避',
+    'Dodge Roll': '翻滚',
+    'Evasion Rating': '闪避值',
+    'Ward': '护盾',
+    'Stun Threshold': '眩晕阈值',
+    'StunThreshold': '眩晕阈值',
+    'Stun': '眩晕',
+    'Ailment Threshold': '异常状态阈值',
+    'Ailment': '异常状态',
+
+    # Recovery
+    'Life Regeneration': '生命回复',
+    'Life Regen': '生命回复',
+    'Mana Regeneration': '魔力回复',
+    'Mana Regen': '魔力回复',
+    'Life Leech': '生命偷取',
+    'Mana Leech': '魔力偷取',
+    'Life Recovery': '生命恢复',
+    'Mana Recovery': '魔力恢复',
+    'Flask Recovery': '药剂恢复',
+    'Flask': '药剂',
+    'Life Flask': '生命药剂',
+    'Mana Flask': '魔力药剂',
+
+    # Charges
+    'Endurance Charge': '耐力球',
+    'Endurance Charges': '耐力球',
+    'Frenzy Charge': '狂怒球',
+    'Frenzy Charges': '狂怒球',
+    'Power Charge': '暴击球',
+    'Power Charges': '暴击球',
+    'Charges': '球',
+    'Charge': '球',
+
+    # Ailments
+    'Ignite': '点燃',
+    'Chill': '冰缓',
+    'Freeze': '冻结',
+    'Shock': '感电',
+    'Poison': '中毒',
+    'Bleed': '流血',
+    'Bleeding': '流血',
+    'Electrocute': '触电',
+    'Electrocution': '触电',
+    'Pin': '定身',
+    'Blind': '致盲',
+    'Maim': '致残',
+    'Hinder': '阻碍',
+    'Wither': '凋零',
+
+    # Attributes
+    'All Attributes': '全属性',
+    'Attribute': '属性',
+    'Attributes': '属性',
+
+    # Speed / movement
+    'Movement Speed': '移动速度',
+    'Movement': '移动',
+    'Speed': '速度',
+    'Attack and Cast Speed': '攻击和施法速度',
+
+    # Area / AoE
+    'Area of Effect': '范围效果',
+    'Area Damage': '范围伤害',
+    'Area': '范围',
+    'Radius': '半径',
+    'Projectile': '投射物',
+    'Projectile Damage': '投射物伤害',
+    'Projectile Speed': '投射物速度',
+    'Projectiles': '投射物',
+    'Projectile Count': '投射物数量',
+
+    # Skill gems / supports
+    'Skill': '技能',
+    'Skills': '技能',
+    'Support Gem': '辅助宝石',
+    'SupportGem': '辅助宝石',
+    'Support Gems': '辅助宝石',
+    'Skill Gem': '技能宝石',
+
+    # Minions / totems / misc
+    'Minion': '召唤物',
+    'Minions': '召唤物',
+    'Totem': '图腾',
+    'Totems': '图腾',
+    'Trap': '陷阱',
+    'Traps': '陷阱',
+    'Mine': '地雷',
+    'Mines': '地雷',
+    'Banner': '旗帜',
+    'Banners': '旗帜',
+    'Herald': '捷',
+    'Aura': '光环',
+    'Auras': '光环',
+    'Curse': '诅咒',
+    'Curses': '诅咒',
+    'Mark': '印记',
+    'Marks': '印记',
+    'Warcry': '战吼',
+    'Warcries': '战吼',
+    'Brand': '烙印',
+    'Orb': '能量球',
+
+    # Effects
+    'Buff': '增益',
+    'Debuff': '减益',
+    'Effect': '效果',
+    'Duration': '持续时间',
+    'Cooldown': '冷却时间',
+    'Cooldown Recovery': '冷却回复',
+    'Cooldown Recovery Rate': '冷却回复速度',
+    'Mana Cost': '魔力消耗',
+    'Life Cost': '生命消耗',
+    'Cost': '消耗',
+    'Reservation': '保留',
+
+    # Weapon types
+    'Melee': '近战',
+    'Melee Damage': '近战伤害',
+    'Melee Attack': '近战攻击',
+    'One Handed': '单手',
+    'Two Handed': '双手',
+    'Dual Wield': '双持',
+    'Shield': '盾牌',
+    'Bow': '弓',
+    'Wand': '法杖',
+    'Staff': '长杖',
+    'Sceptre': '权杖',
+    'Claw': '爪',
+    'Dagger': '匕首',
+    'Mace': '锤',
+    'Axe': '斧',
+    'Sword': '剑',
+    'Flail': '连枷',
+    'Crossbow': '弩',
+    'Spear': '矛',
+    'Quarterstaff': '长棍',
+
+    # Item slots
+    'Body Armour': '胸甲',
+    'Helmet': '头盔',
+    'Gloves': '手套',
+    'Boots': '鞋子',
+    'Ring': '戒指',
+    'Amulet': '项链',
+    'Belt': '腰带',
+    'Weapon': '武器',
+    'Off Hand': '副手',
+    'Quiver': '箭袋',
+    'Charm': '护符',
+
+    # Rarity / modifiers
+    'Rarity': '稀有度',
+    'Magic': '魔法',
+    'Rare': '稀有',
+    'Unique': '传奇',
+    'Normal': '普通',
+
+    # Other common terms
+    'Maximum': '最大',
+    'Maximum Life': '最大生命',
+    'Maximum Mana': '最大魔力',
+    'Maximum Energy Shield': '最大能量护盾',
+    'Reduced': '降低',
+    'Increased': '提高',
+    'More': '更多',
+    'Less': '更少',
+    'Additional': '额外',
+    'Chance': '几率',
+    'On Kill': '击败时',
+    'On Hit': '击中时',
+    'On Block': '格挡时',
+    'On Critical': '暴击时',
+    'On Death': '死亡时',
+    'While': '当...时',
+    'Nearby': '附近',
+    'Enemies': '敌人',
+    'Enemy': '敌人',
+    'Allies': '友军',
+    'Ally': '友军',
+    'You': '你',
+    'Your': '你的',
+    'Summoned': '召唤的',
+    'Kill': '击败',
+    'Kills': '击败',
+    'Killed': '击败的',
+    'Recently': '近期',
+    'Past': '过去',
+    'Seconds': '秒',
+    'Second': '秒',
+    'Metres': '米',
+    'Level': '等级',
+    'Power': '力量',
+    'Exposure': '曝露',
+    'Penetration': '穿透',
+    'Penetrates': '穿透',
+    'Leech': '偷取',
+    'Gain': '获得',
+    'Lose': '失去',
+    'Convert': '转化',
+    'Conversion': '转化',
+    'Mirror': '镜像',
+    'Clone': '复制体',
+    'Splinter': '碎片',
+
+    # Surrounded
+    'Surrounded': '被包围',
+    'Range': '范围',
+
+    # Crafting
+    'Socket': '插槽',
+    'Sockets': '插槽',
+
+    # Companion
+    'Companion': '同伴',
+    'Companion Resistance': '同伴抗性',
+
+    # Elemental Infusion
+    'ElementalInfusion': '元素灌注',
+    'Cold Infusions': '冰霜灌注',
+    'Fire Infusions': '火焰灌注',
+    'Lightning Infusions': '闪电灌注',
+    'Elemental Infusions': '元素灌注',
+
+    # Charm slots
+    'Charm Slot': '护符槽位',
+    'Ring Slot': '戒指槽位',
+
+    # Combo/chain
+    'Combo': '连击',
+    'Chain': '连锁',
+    'Fork': '分裂',
+    'Pierce': '穿透',
+    'Split': '分裂',
+    'Return': '返回',
+    'Bounce': '弹射',
+
+    # Charges (alt)
+    'Endurance': '耐力',
+    'Frenzy': '狂怒',
+    'Power Charge Chance': '暴击球几率',
+
+    # Status/state
+    'Stationary': '静止',
+    'Moving': '移动中',
+    'Full Life': '满血',
+    'Low Life': '低血',
+    'Full Mana': '满魔',
+    'Low Mana': '低魔',
+    'Armour Break': '护甲破坏',
+    'Armour|Armour Break': '护甲破坏',
+    'Warcry|Warcry': '战吼',
+    'Stun|Stun': '眩晕',
+    'Ignite|Ignite': '点燃',
+    'Chill|Chill': '冰缓',
+    'Freeze|Freeze': '冻结',
+    'Shock|Shock': '感电',
+    'Poison|Poison': '中毒',
+    'Bleed|Bleed': '流血',
+    'Bleeding|Bleeding': '流血',
+    'Blind|Blind': '致盲',
+    'Maim|Maim': '致残',
+    'Hinder|Hinder': '阻碍',
+    'Wither|Wither': '凋零',
+    'Pin|Pin': '定身',
+    'Exposure|Exposure': '曝露',
+    'Surround|Surrounded': '被包围',
+    'Mark|Mark': '印记',
+    'Curse|Curse': '诅咒',
+    'Intimidate|Intimidate': '威吓',
+    'Unnerve|Unnerve': '虚弱',
+    'Sap|Sap': '衰竭',
+    'Scorch|Scorch': '灼烧',
+    'Brittle|Brittle': '脆弱',
+    'Electrocute|Electrocute': '触电',
+    'Accuracy|Accuracy': '命中',
+    'Accuracy Rating|Accuracy': '命中值',
+    'Accuracy and Critical Hit Chance|Accuracy': '命中和暴击几率',
+    'Accuracy and Critical Damage Bonus|Accuracy': '命中和暴击伤害加成',
+
+    # Specific unique terms from the data
+    'ItemRarity|Item Rarity': '物品稀有度',
+    'MonsterExperience|Monster Experience': '怪物经验',
+    'LifeRegeneration|Life Regeneration': '生命回复',
+    'ManaRegeneration|Mana Regeneration': '魔力回复',
+    'CooldownRecovery|Cooldown Recovery Rate': '冷却回复速度',
+    'PuppetMaster|Puppet Master': '傀儡大师',
+    'LightRadius|Light Radius': '光照范围',
+    'Slow': '减速',
+    'Slow Effect': '减速效果',
+    'Thorns|Thorns': '荆棘',
+    'HeraldOfThunder|Herald of Thunder': '雷霆之捷',
+    'HeraldOfAsh|Herald of Ash': '灰烬之捷',
+    'HeraldOfIce|Herald of Ice': '寒冰之捷',
+    'HeraldOfBlood|Herald of Blood': '鲜血之捷',
+
+    # Unique skill mechanics
+    'Culling Strike': '终结',
+    'Culling': '终结',
+    'Execution': '处决',
+    'Execute': '处决',
+    'Overwhelm': '压制',
+    'Impale': '穿刺',
+    'Crush': '碾压',
+    'Rage': '怒气',
+    'Fury': '狂怒',
+    'Frenzy': '狂怒',
+    'Fortify': '稳固',
+    'Guard': '护体',
+    'Elusive': '飘渺',
+    'Tailwind': '顺风',
+    'Adrenaline': '肾上腺素',
+    'Onslaught': '猛攻',
+    'Unholy Might': '邪恶之力',
+    'Arcane Surge': '奥术涌动',
+    'Consecrated Ground': '奉献地面',
+    'Profane Ground': '亵渎地面',
+    'Shocked Ground': '感电地面',
+    'Chilled Ground': '冰缓地面',
+    'Burning Ground': '燃烧地面',
+    'Tarred Ground': '焦油地面',
+    'Smoke': '烟雾',
+    'Cloud': '云',
+    'Mirage': '幻影',
+    'Phantasm': '幽灵',
+    'Spectre': '灵体',
+    'Skeleton': '骷髅',
+    'Zombie': '僵尸',
+    'Golem': '魔像',
+    'Spider': '蜘蛛',
+    'Wolf': '狼',
+    'Bear': '熊',
+    'Hawk': '鹰',
+    'Cat': '猫',
+    'Tiger': '虎',
+    'Raven': '乌鸦',
+
+    # More mechanics
+    'Knockback': '击退',
+    'Knockback|Knockback': '击退',
+    'Taunt': '嘲讽',
+    'Taunt|Taunt': '嘲讽',
+    'Flee': '逃跑',
+    'Flee|Flee': '逃跑',
+
+    # Flask terms
+    'Flask Charges': '药剂充能',
+    'Flask Charges Gained': '获得药剂充能',
+    'Flask Effect': '药剂效果',
+    'Flask Duration': '药剂持续时间',
+
+    # Spell suppression
+    'Spell Suppression': '法术抑制',
+
+    # Skill specific
+    'Strike': '重击',
+    'Slam': '猛击',
+    'Slam|Slam': '猛击',
+    'Channelling': '引导',
+    'Channeling': '引导',
+    'Charged Attack': '蓄力攻击',
+    'Charged': '蓄力',
+    'Warcry|Warcries': '战吼',
+    'Warcry Power': '战吼强度',
+
+    # Item modifiers
+    'Item Rarity': '物品稀有度',
+    'Gold': '金币',
+    'Gold Find': '寻金',
+    'Experience': '经验',
+    'Experience Gain': '经验获取',
+
+    # Common compounds (only safe for word-boundary matching)
+    'you\'ve': '你已',
+    'dealt': '造成',
+
+    # Lowercase variants for stats
+    'increased': '提高',
+    'reduced': '降低',
+    'maximum': '最大',
+    'rate': '速度',
+    'Rate': '速度',
+    'cast': '施法',
+    'Cast': '施法',
+    'Grants': '赋予',
+    'grants': '赋予',
+    'Passive Skill Point': '被动技能点',
+    'regenerate': '回复',
+    'regenerates': '回复',
+    'per second': '每秒',
+    'less': '更少',
+    'more': '更多',
+    'Walk the': '行走于',
+    'Paths Not Taken': '未走之路',
+    'OraclePaths|Paths Not Taken': '未走之路',
+    'Unlucky': '不幸',
+    'Hitting': '击中',
+    'Temper Weapon': '淬火武器',
+    'Manifest Weapon': '显现武器',
+    'Encase in Jade': '翡翠包裹',
+    'Moment of Vulnerability': '脆弱时刻',
+    'Align Fate': '校准命运',
+    'Fire Spell on Hit': '击中时火焰法术',
+    'Hitting you': '击中你',
+    'Non-Keystone': '非核心天赋',
+    'Passive Skills': '被动技能',
+    'Passive Skill': '被动技能',
+    'Medium Radius': '中等范围',
+    'allocated': '已分配',
+    'Keystone Passive Skills': '核心天赋被动技能',
+    'can be allocated without': '可在不...情况下分配',
+    'Body Armour grants': '胸甲赋予',
+
+    # Additional common PoE2 terms for node names
+    'Mastery': '专精',
+    'Buildup': '累积',
+    'Magnitude': '幅度',
+    'Delay': '延迟',
+    'Deflection': '偏转',
+    'Shapeshifted': '变形时',
+    'Shapeshifting': '变形',
+    'Recoup': '回复',
+    'Flammability': '易燃',
+    'Applies': '应用',
+    'applies': '应用',
+    'Glory': '荣耀',
+    'Infusion': '灌注',
+    'Parry': '格挡',
+    'Generation': '生成',
+    'Empowered': '强化',
+    'Ancestral': '先祖',
+    'Costs': '消耗',
+    'Gained': '获得',
+    'Grenade': '手雷',
+    'Volatility': '波动',
+    'Command': '指令',
+    'Surge': '涌动',
+    'Remnant': '残留',
+    'Offering': '献祭',
+    'Hazard': '危险',
+    'Penalty': '惩罚',
+    'Offence': '进攻',
+    'Daze': '眩晕',
+    'Immobilisation': '禁锢',
+    'Placement': '放置',
+    'Reservation': '保留',
+    'Expiry': '到期',
+    'Nature': '自然',
+    'Impact': '冲击',
+    'Infused': '灌注',
+    'Invocation': '祈唤',
+    'Exposure': '曝露',
+    'Reload': '装填',
+    'Incision': '切割',
+    'Toxins': '毒素',
+    'Concoction': '合剂',
+    'Overwhelm': '压制',
+    'Archon': '执政官',
+    'Presence': '存在',
+    'Defences': '防御',
+    'Flask': '药剂',
+    'Flasks': '药剂',
+    'Ballista': '弩炮',
+    'Thorns': '荆棘',
+    'Herald': '捷',
+    'Aura': '光环',
+    'Surrounded': '被包围',
+    'Charm': '护符',
+    'Puppet': '傀儡',
+    'Chakra': '脉轮',
+    'Caster': '施法者',
+    'Triggered': '触发',
+    'Moving': '移动时',
+    'Used': '使用',
+    'Wielding': '持用',
+    'Dual': '双',
+    'Electrocute': '触电',
+    'Bleeding': '流血',
+    'Bleed': '流血',
+    'Chill': '冰缓',
+    'Freeze': '冻结',
+    'Ignite': '点燃',
+    'Shock': '感电',
+    'Poison': '中毒',
+    'Blind': '致盲',
+    'Blinded': '致盲',
+    'Pin': '定身',
+    'Immobilised': '禁锢',
+    'Knockback': '击退',
+    'Strike': '重击',
+    'Slam': '猛击',
+    'Channelling': '引导',
+    'Charged': '蓄力',
+    'Taunt': '嘲讽',
+    'Flee': '逃跑',
+    'Plant': '植物',
+    'Heavy': '重型',
+    'Rating': '值',
+    'Regeneration': '回复',
+    'Attribute': '属性',
+    'Energy': '能量',
+    'Personal': '个人',
+    'Socket': '插槽',
+    'Sockets': '插槽',
+    'Consumed': '消耗',
+    'consuming': '消耗',
+    'Gaining': '获得',
+    'Gain': '获得',
+    'against': '对抗',
+    'while': '时',
+    'when': '当',
+    'Force': '之力',
+    'Hits': '击中',
+    'Resistance': '抗性',
+    'Resistances': '抗性',
+    'Reduced': '降低',
+    'Increased': '提高',
+    'Additional': '额外',
+    'Maximum': '最大',
+    'Allies': '友军',
+    'Enemies': '敌人',
+    'Enemy': '敌人',
+    'Ally': '友军',
+    'Nearby': '附近',
+    'Recently': '近期',
+    'Killed': '击败',
+    'Kills': '击败',
+    'Rage': '怒气',
+    'Frenzy': '狂怒',
+    'Banner': '旗帜',
+    'Curse': '诅咒',
+    'Mark': '印记',
+    'Warcry': '战吼',
+    'Power': '力量',
+    'Fortify': '稳固',
+    'Arcane': '奥术',
+    'Storm': '风暴',
+    'Flame': '烈焰',
+    'Burning': '燃烧',
+    'Molten': '熔融',
+    'Frozen': '冻结',
+    'Frost': '冰霜',
+    'Blood': '鲜血',
+    'Bone': '白骨',
+    'Flesh': '血肉',
+    'Spirit': '灵魂',
+    'Shadow': '暗影',
+    'Light': '光明',
+    'Dark': '黑暗',
+    'Void': '虚空',
+    'Time': '时间',
+    'Eternal': '永恒',
+    'Ancient': '古老',
+    'Primordial': '原始',
+    'Primal': '原始',
+    'Divine': '神圣',
+    'Savage': '野蛮',
+    'Brutal': '残暴',
+    'Vicious': '恶毒',
+    'Deadly': '致命',
+    'Lethal': '致命',
+    'Mighty': '强力',
+    'Titanic': '巨人',
+    'Giant': '巨人',
+    'Colossal': '巨大',
+    'Massive': '巨大',
+    'Hulking': '巨大',
+    'Towering': '高耸',
+    'Mountainous': '山岳',
+    'Deep': '深度',
+    'Inner': '内部',
+    'Outer': '外部',
+    'Iron': '钢铁',
+    'Steel': '钢铁',
+    'Crystal': '水晶',
+    'Jade': '翡翠',
+    'Amber': '琥珀',
+    'Ruby': '红宝石',
+    'Sapphire': '蓝宝石',
+    'Emerald': '绿宝石',
+    'Diamond': '钻石',
+    'Golden': '黄金',
+    'Silver': '白银',
+    'Bronze': '青铜',
+    'Leather': '皮革',
+    'Silk': '丝绸',
+    'Chain': '锁链',
+    'Plate': '板甲',
+    'Scale': '鳞甲',
+    'Cloth': '布甲',
+    'Hide': '兽皮',
+    'Wooden': '木制',
+    'Stone': '石头',
+    'Rock': '岩石',
+    'Earth': '大地',
+    'Wind': '风',
+    'Water': '水',
+    'Fire': '火焰',
+    'Ice': '冰',
+    'Lightning': '闪电',
+    'Thunder': '雷霆',
+    'Cold': '冰霜',
+    'Chaos': '混沌',
+    'Poison': '中毒',
+    'Elemental': '元素',
+    'Physical': '物理',
+    'Armour': '护甲',
+    'Evasion': '闪避',
+    'Life': '生命',
+    'Mana': '魔力',
+    'Calm': '平静',
+    'Hatred': '憎恨',
+    'Valour': '勇武',
+    'Broken': '破碎',
+    'Shattered': '粉碎',
+    'Crushed': '碾压',
+    'Sundered': '破甲',
+    'Pierced': '穿透',
+    'Wounded': '受伤',
+    'Scarred': '伤痕',
+    'Blighted': '枯萎',
+    'Corrupted': '腐化',
+    'Tainted': '污染',
+    'Purified': '净化',
+    'Blessed': '祝福',
+    'Cursed': '诅咒',
+    'Hallowed': '神圣',
+    'Sacred': '神圣',
+    'Profane': '亵渎',
+    'Unholy': '邪恶',
+    'Spectral': '幽灵',
+    'Ghostly': '幽灵',
+    'Phantasmal': '幻影',
+    'Eldritch': '异能',
+    'Wicked': '邪恶',
+    'Vile': '邪恶',
+    'Foul': '污秽',
+    'Dire': '悲惨',
+    'Dread': '恐惧',
+    'Dreadful': '恐惧',
+    'Horrid': '恐怖',
+    'Terrible': '恐怖',
+    'Wild': '狂野',
+    'Furious': '狂怒',
+    'Raging': '狂怒',
+    'Berserk': '狂暴',
+    'Frenzied': '狂乱',
+    'Mad': '疯狂',
+    'Insane': '疯狂',
+    'Lunatic': '疯狂',
+    'Cunning': '狡猾',
+    'Clever': '聪明',
+    'Wise': '智慧',
+    'Learned': '博学',
+    'Trained': '训练',
+    'Skilled': '熟练',
+    'Expert': '专家',
+    'Master': '大师',
+    'Adept': '精通',
+    'Practiced': '熟练',
+    'Disciplined': '自律',
+    'Focused': '专注',
+    'Concentrated': '集中',
+    'Precise': '精准',
+    'Accurate': '准确',
+    'Swift': '迅速',
+    'Quick': '快速',
+    'Fast': '快速',
+    'Slow': '缓慢',
+    'Steady': '稳定',
+    'Constant': '持续',
+    'Enduring': '持久',
+    'Lasting': '持久',
+    'Sustained': '持续',
+    'Relentless': '无情',
+    'Ceaseless': '不停',
+    'Endless': '无尽',
+    'Infinite': '无限',
+    'Boundless': '无限',
+    'Limitless': '无限',
+    'Growing': '成长',
+    'Rising': '上升',
+    'Falling': '下降',
+    'Spreading': '扩散',
+    'Reaching': '触及',
+    'Stretching': '延伸',
+    'Expanding': '扩张',
+    'Draining': '吸取',
+    'Sapping': '削弱',
+    'Weakening': '虚弱',
+    'Strengthening': '增强',
+    'Empowering': '强化',
+    'Enhancing': '增强',
+    'Amplifying': '放大',
+    'Magnifying': '放大',
+    'Intensifying': '强化',
+    'Accelerating': '加速',
+    'Hastening': '加速',
+    'Quickening': '加速',
+}
+
+# ============================================================
+# DIRECT NAME TRANSLATIONS — for keystones and common notables
+# that have well-known Chinese names in PoE2
+# ============================================================
+
+DIRECT_NAMES = {
+    # Keystones
+    'Acrobatics': '游移之术',
+    'Ancestral Bond': '先祖契约',
+    'Arrow Dancing': '箭舞',
+    'Avatar of Fire': '火焰化身',
+    'Blood Magic': '血魔法',
+    'Call to Arms': '武装号召',
+    'Chaos Inoculation': '混沌免疫',
+    'Conduit': '导电',
+    'Crimson Dance': '赤红之舞',
+    'Crimson Power': '赤红之力',
+    'Eldritch Battery': '异能魔力',
+    'Elemental Equilibrium': '元素平衡',
+    'Eternal Youth': '青春永驻',
+    'Ghost Dance': '幽魂之舞',
+    'Ghost Reaver': '幽魂掠夺者',
+    'Giant\'s Blood': '巨人之血',
+    'Glancing Blows': '偏斜格挡',
+    'Heartstopper': '心停',
+    'Hex Master': '诅咒大师',
+    'Hollow Palm Technique': '空手道',
+    'Iron Grip': '钢铁之握',
+    'Iron Reflexes': '钢铁反射',
+    'Iron Will': '钢铁意志',
+    'Kinetic Blast': '动能爆破',
+    'Lethe Shade': '遗忘之影',
+    'Lone Messenger': '孤独使者',
+    'Lucky Shield': '幸运护盾',
+    'Mind Over Matter': '心灵升华',
+    'Minion Instability': '召唤物不稳定',
+    'MoM': '心灵升华',
+    'Necromantic Aegis': '亡灵庇护',
+    'Oasis': '绿洲',
+    'Oasis of Faith': '信仰绿洲',
+    'Omens': '预兆',
+    'Pain Attunement': '痛苦共鸣',
+    'Perfect Strike': '完美一击',
+    'Phase Acrobatics': '相位游移',
+    'Point Blank': '近身射击',
+    'Precise Technique': '精准技法',
+    'Resonance': '共鸣',
+    'Resolute Technique': '坚定技法',
+    'Runebinder': '符文绑定者',
+    'Searing Heat': '灼热',
+    'Shaman\'s Dominion': '萨满统御',
+    'Solipsism': '唯我论',
+    'Spaghettification': '意面化',
+    'Spirit of the Grave': '墓穴之灵',
+    'Spiritual Darkness': '灵魂之暗',
+    'Supreme Ostentation': '至高炫耀',
+    'The Devourer': '吞噬者',
+    'The Path of Ash': '灰烬之路',
+    'Time Freeze': '时间冻结',
+    'Tribal Fury': '部落之怒',
+    'Unnatural Instinct': '非自然本能',
+    'Unwavering Stance': '不动如山',
+    'Vaal Pact': '瓦尔契约',
+    'Vampirism': '吸血鬼化',
+    'Veteran Soldier': '老兵',
+    'Wand Mastery': '法杖精通',
+    'Whispers of Doom': '末日低语',
+    'Wind Dancer': '风舞者',
+    'Zealot\'s Oath': '狂热誓言',
+    'Oracle': '神谕',
+
+    # Notable passives
+    'Admonisher': '告诫者',
+    'Adverse Growth': '逆境生长',
+    'Afterimage': '残像',
+    'Agile Succession': '敏捷继承',
+    'All For One': '合众为一',
+    'Ancient Aegis': '古老庇护',
+    'Arcane Sanctuary': '奥术圣所',
+    'Armour Piercing': '穿甲',
+    'Backup Plan': '后备计划',
+    'Battle Fever': '战斗狂热',
+    'Bladedancer': '刃舞者',
+    'Blinding Flash': '炫目闪光',
+    'Blood Rush': '血涌',
+    'Bloodthorn': '血棘',
+    'Bone Barrier': '白骨屏障',
+    'Born to Fight': '天生斗士',
+    'Brink of Death': '濒死边缘',
+    'Brittle Barrier': '脆弱屏障',
+    'Brutal Fervour': '残酷狂热',
+    'Burning Strikes': '燃烧重击',
+    'Calamitous Intent': '灾厄意图',
+    'Call of the Void': '虚空呼唤',
+    'Catapult': '弹射器',
+    'Cautious Approach': '谨慎行事',
+    'Celerity': '迅捷',
+    'Charging Offensive': '冲锋攻势',
+    'Clear Space': '清场',
+    'Climate Change': '气候变化',
+    'Cold Calculations': '冷酷计算',
+    'Concentrated Force': '集中之力',
+    'Cruel Methods': '残酷手段',
+    'Crushing Blows': '粉碎打击',
+    'Crystal Resonance': '水晶共鸣',
+    'Dampening Shield': '减振护盾',
+    'Deadly Force': '致命之力',
+    'Deep Trance': '深度冥想',
+    'Defiance': '挑衅',
+    'Desensitisation': '脱敏',
+    'Deterioration': '恶化',
+    'Dire Plight': '悲惨困境',
+    'Disarming Strike': '缴械打击',
+    'Disciplined Approach': '自律之法',
+    'Distracting Presence': '分散存在',
+    'Dodge and Weave': '闪转騰挪',
+    'Doomsayer': '末日宣告者',
+    'Dreadful Cry': '恐怖嚎叫',
+    'Eagle Eyes': '鹰眼',
+    'Echoes of the Anvil': '铁砧回响',
+    'Efficient Training': '高效训练',
+    'Elasticity': '弹性',
+    'Energizing Storm': '充能风暴',
+    'Essence Infusion': '精华灌注',
+    'Eternal Damnation': '永恒诅咒',
+    'Exposed Weakness': '暴露弱点',
+    'Extended Battle': '持久战',
+    'Eye of the Storm': '风暴之眼',
+    'Falcon Dive': '隼之俯冲',
+    'Far Reach': '远及',
+    'Fated End': '命运终结',
+    'Feathered Arrows': '羽箭',
+    'Feasting Flesh': '食肉',
+    'Feel No Pain': '不感疼痛',
+    'Field Surgery': '野战手术',
+    'Final Barrage': '最后一击',
+    'Fireproof': '防火',
+    'Flames of the Forge': '熔炉之火',
+    'Flash of Brilliance': '灵光一闪',
+    'Flow Like Water': '行云流水',
+    'Force of Will': '意志之力',
+    'Forced Disappearance': '强制消失',
+    'Frazzled': '疲惫',
+    'Fresh Clip': '新弹夹',
+    'Frontline': '前线',
+    'Frozen in Place': '原地冻结',
+    'Furious Sprint': '狂怒冲刺',
+    'Galvanic Attunement': '流电调和',
+    'Gem Studded': '满嵌宝石',
+    'General\'s Binding': '将军之缚',
+    'Glacial Shield': '冰川护盾',
+    'Glimpse of Eternity': '永恒一瞥',
+    'Gore Spike': '血锥',
+    'Goring': '刺穿',
+    'Grand Scheme': '宏伟计划',
+    'Gravitas': '威严',
+    'Guarded Advance': '护卫推进',
+    'Hale Heart': '健康之心',
+    'Hard to Kill': '难以击败',
+    'Hardened Shell': '硬化外壳',
+    'Harmonic Generator': '谐波发生器',
+    'Harness the Elements': '驾驭元素',
+    'Heatproofing': '隔热',
+    'Heavy Ammunition': '重型弹药',
+    'Heavy Buffer': '重型缓冲',
+    'Heraldic Timer': '捷之计时',
+    'Hit and Run': '游击战术',
+    'Hulking Form': '巨大形态',
+    'Hypercharge': '超载',
+    'Immortal Infamy': '不朽恶名',
+    'In For the Kill': '追杀到底',
+    'In the Thick of It': '身陷其中',
+    'Incendiary': '纵火',
+    'Inner Focus': '内心专注',
+    'Insulation': '绝缘',
+    'Iron Justice': '钢铁正义',
+    'Jack of All Trades': '万事通',
+    'Lasting Trauma': '持续创伤',
+    'Layered Defence': '层层防御',
+    'Light Eater': '噬光者',
+    'Light Forger': '铸光者',
+    'Lucky Rabbit Foot': '幸运兔脚',
+    'Made to Last': '经久耐用',
+    'Makeshift Armour': '临时护甲',
+    'Mass Rejuvenation': '群体复苏',
+    'Melding': '融合',
+    'Mighty Hunter': '强猎者',
+    'Moment of Truth': '真相时刻',
+    'Mountainous Fortitude': '山岳之坚',
+    'Natural Selection': '自然选择',
+    'Neither Sleep nor Rest': '不眠不休',
+    'On the Edge': '边缘之上',
+    'One False Step': '一步之差',
+    'Open Wound': '开放伤口',
+    'Overflowing Power': '溢出之力',
+    'Overload': '过载',
+    'Overwhelming Force': '压倒性力量',
+    'Passing The Buck': '转嫁责任',
+    'Pigment': '颜料',
+    'Pile On': '叠加',
+    'Plated Conviction': '镀层信念',
+    'Polished Iron': '抛光铁甲',
+    'Potent Concoctions': '强力合剂',
+    'Power Conduction': '能量传导',
+    'Practiced Incantations': '熟练咒语',
+    'Pressure Points': '要害打击',
+    'Primal Beauty': '原始之美',
+    'Punishment': '惩罚',
+    'Pure Energy': '纯粹能量',
+    'Quick-change Act': '快速换装',
+    'Rapid Freeze': '急速冻结',
+    'Rattled': '慌乱',
+    'Raw Brutality': '原始残暴',
+    'Raw Power': '原始力量',
+    'Reaching Strike': '长距打击',
+    'Reinforced Limbs': '强化四肢',
+    'Relentless Pursuit': '无情追击',
+    'Remorseless': '无悔',
+    'Repeating Explosives': '连发炸药',
+    'Replenishing Totems': '补给图腾',
+    'Reprisal': '报复',
+    'Riddle of Steel': '钢铁谜题',
+    'Rising Sun': '旭日',
+    'Risky Play': '冒险之举',
+    'Ruinous Wounds': '毁灭之伤',
+    'Sand in the Eyes': '眼中之沙',
+    'Savoured Blood': '品味之血',
+    'Seismic Tremors': '地震余波',
+    'Self Mortification': '自苦',
+    'Selfless Protector': '无私守护者',
+    'Shattering Strikes': '粉碎打击',
+    'Shockproof': '防震',
+    'Silent Shiv': '无声匕首',
+    'Skullcrusher': '碎颅者',
+    'Slippery Prey': '滑溜猎物',
+    'Slow Burn': '缓慢燃烧',
+    'Smash Through': '粉碎突进',
+    'Snakebite': '蛇咬',
+    'Soothing Remedies': '舒缓药剂',
+    'Spirit of the Elder': '长老之魂',
+    'Spirited Response': '精神响应',
+    'Stance Breaker': '破势者',
+    'Stand Your Ground': '坚守阵地',
+    'Steeped in the Past': '沉浸于过去',
+    'Step Like a Wolf': '狼步',
+    'Struck by Lightning': '雷击',
+    'Stubbornness': '顽固',
+    'Sudden Burst': '突然爆发',
+    'Sundering Strikes': '破甲打击',
+    'Surefooted': '稳足',
+    'Surging Currents': '涌动之流',
+    'Surprising Riposte': '出奇反击',
+    'Survival Instinct': '生存本能',
+    'Sustained Momentum': '持续动量',
+    'Tectonic Rift': '地壳裂谷',
+    'The More the Merrier': '越多越好',
+    'Thickened Arrows': '加粗箭矢',
+    'Thorny Thicket': '荆棘丛',
+    'Throatseeker': '觅喉者',
+    'Tidal Force': '潮汐之力',
+    'Tipping Point': '临界点',
+    'Titanic': '巨人',
+    'Tough Shell': '坚硬外壳',
+    'Towering Bulwark': '高耸壁垒',
+    'Tranquility': '宁静',
+    'Tribal Vengeance': '部落复仇',
+    'True Strike': '精准打击',
+    'Turn the Heat': '升温',
+    'Turning the Screws': '步步紧逼',
+    'Undertaker': '殡葬者',
+    'Unerring Impact': '无误冲击',
+    'United Forces': '联合之力',
+    'Unpredictable Offensive': '不可预测攻势',
+    'Unstable Agency': '不稳定媒介',
+    'Up Close and Personal': '贴身肉搏',
+    'Vicious Trauma': '恶毒创伤',
+    'Vile Toxins': '邪恶毒素',
+    'Volatile Reaction': '挥发反应',
+    'Wasting Away': '消逝',
+    'Watch How I Do It': '看好了',
+    'Wear Them Down': '消耗殆尽',
+    'Weather the Storm': '抵御风暴',
+    'Wild Storm': '狂野风暴',
+    'Withering Away': '凋零消逝',
+    'Without Warning': '毫无警告',
+    'Wonder Traps': '奇妙陷阱',
+
+    # More common names and terms
+    'Passive Point': '被动技能点',
+    'Lesser': '较小',
+    'Unseen': '无形',
+    'Brute': '蛮力',
+    'Smith': '铁匠',
+    'Shaman': '萨满',
+    'Kitava': '奇塔弗',
+    'Utula': '乌图拉',
+    'Renly': '伦利',
+
+    # Compound name translations that need full replacement
+    'Heat of the Forge': '熔炉之热',
+    'Against the Anvil': '对抗铁砧',
+    'Anvil\'s Weight': '铁砧之重',
+    'Answered Call': '回应召唤',
+    'Coal Stoker': '添煤者',
+    'Converging Paths': '汇聚之路',
+    'Dedication to Kitava': '奇塔弗之奉献',
+    'Entwined Realities': '交织现实',
+    'Fateful Vision': '命运预见',
+    'Flowing Metal': '流动金属',
+    'Forced Outcome': '强制结局',
+    'Harmony Within': '内在和谐',
+    'Imploding Impacts': '内爆冲击',
+    'Internal Layer': '内层',
+    'Kitavan Engraving': '奇塔弗刻印',
+    'Smith\'s Masterwork': '铁匠杰作',
+    'Spiked Plates': '尖刺板甲',
+    'Support Straps': '支撑绑带',
+    'Tantalum Alloy': '钽合金',
+    'Tribute to Utula': '乌图拉之贡品',
+    'Unnamed Heartwood': '无名心材',
+    'Warcaller\'s Bellow': '战吼者之咆哮',
+    'Renly\'s Training': '伦利之训练',
+    'Jade Heritage': '翡翠遗产',
+    'Molten Symbol': '熔融符文',
+    'Leather Bindings': '皮革束带',
+    'Living Weapon': '活体武器',
+    'Forged in Flame': '烈火锻造',
+    'Critical Damage Bonus on You': '你造成的暴击伤害加成',
+    'Lesser Harm': '较小伤害',
+    'Smith of Kitava': '奇塔弗之锻工',
+    'The Unseen Path': '无形之路',
+    'Lesser Harm': '较小伤害',
+    'Anvil\'s Weight': '铁砧之重',
+    'Adaptive Skin': '适应皮肤',
+    'Avatar of Evolution': '进化化身',
+    'Bringer of the Apocalypse': '天启使者',
+    'Calculated Hunter': '精算猎手',
+    'Channelled Heritage': '引导传承',
+    'Core of the Guardian': '守护者之核',
+    'Craving Slaughter': '渴求杀戮',
+    'Crushing Impacts': '粉碎冲击',
+    'Defensive Stance': '防御姿态',
+    'Druidic Champion': '德鲁伊勇士',
+    'Earthbreaker': '碎地者',
+    'Echoes of Ferocity': '残暴回响',
+    'Everlasting Bloom': '永恒绽放',
+    'Fleshcrafting': '血肉工艺',
+    'Fortified Aegis': '强化庇护',
+    'Friend to Many': '众人之友',
+    'Fulmination': '雷爆',
+    'Her Final Bite': '她的最后一咬',
+    'In Your Face': '当面挑衅',
+    'Kitavan Imprint': '奇塔弗烙印',
+    'Lord of the Wilds': '荒野之主',
+    'Lunar Boon': '月之赐福',
+    'Mountain Splitter': '裂山者',
+    'Mysterious Lineage': '神秘血统',
+    'Overheating Blow': '过热打击',
+    'Reactive Growth': '反应生长',
+    'Retaliation': '报复',
+    'Revenge': '复仇',
+    'Roaring Cries': '咆哮战吼',
+    'Rustle of Leaves': '叶之沙沙',
+    'Shelter from the Rain': '避雨之所',
+    'Splitting Ground': '分裂大地',
+    'Trusted Partner': '信赖搭档',
+    'Turning of the Seasons': '季节更替',
+    'Unbreakable': '坚不可摧',
+    'Unmoving Craiceann': '不动之壳',
+    'Watchtowers': '瞭望塔',
+    'Wide Barrier': '宽阔屏障',
+    'Wisdom of the Maji': '贤者之智',
+    'Echoes of the Anvil': '铁砧回响',
+    'Flames of the Forge': '熔炉之火',
+    'Mind Over Matter': '心灵升华',
+
+    # Add common terms that appear in compound names
+    'Harm': '伤害',
+    'Path': '之路',
+    'Heavy': '重型',
+    'Bond': '羁绊',
+    'Trap': '陷阱',
+    'Traps': '陷阱',
+    'Step': '步伐',
+    'Born': '天生',
+    'Fight': '战斗',
+    'War': '战争',
+    'Battle': '战斗',
+    'Peace': '和平',
+    'Death': '死亡',
+    'Life': '生命',
+    'Hope': '希望',
+    'Fear': '恐惧',
+    'Pain': '痛苦',
+    'Joy': '喜悦',
+    'Fate': '命运',
+    'Destiny': '命运',
+    'Doom': '末日',
+    'Glory': '荣耀',
+    'Honour': '荣誉',
+    'Valour': '勇武',
+    'Might': '力量',
+    'Will': '意志',
+    'Faith': '信仰',
+    'Truth': '真相',
+    'Lie': '谎言',
+    'Dream': '梦想',
+    'Nightmare': '噩梦',
+    'Sleep': '睡眠',
+    'Rest': '休息',
+    'Wake': '觉醒',
+    'Rise': '崛起',
+    'Fall': '坠落',
+    'Dawn': '黎明',
+    'Dusk': '黄昏',
+    'Sun': '太阳',
+    'Moon': '月亮',
+    'Star': '星辰',
+    'Sky': '天空',
+    'Earth': '大地',
+    'Sea': '海洋',
+    'River': '河流',
+    'Mountain': '山脉',
+    'Forest': '森林',
+    'Tree': '树',
+    'Root': '根',
+    'Branch': '枝',
+    'Leaf': '叶',
+    'Thorn': '荆棘',
+    'Rose': '玫瑰',
+    'Lotus': '莲花',
+    'Tiger': '虎',
+    'Wolf': '狼',
+    'Bear': '熊',
+    'Hawk': '鹰',
+    'Eagle': '鹰',
+    'Raven': '乌鸦',
+    'Snake': '蛇',
+    'Spider': '蜘蛛',
+    'Fox': '狐狸',
+    'Lion': '狮子',
+    'Dragon': '龙',
+    'Phoenix': '凤凰',
+    'Golem': '魔像',
+    'Giant': '巨人',
+    'Titan': '泰坦',
+    'God': '神',
+    'Demon': '恶魔',
+    'Angel': '天使',
+    'Ghost': '幽灵',
+    'Spirit': '灵魂',
+    'Soul': '灵魂',
+    'Heart': '心',
+    'Mind': '心灵',
+    'Body': '身体',
+    'Flesh': '血肉',
+    'Blood': '鲜血',
+    'Bone': '白骨',
+    'Skin': '皮肤',
+    'Eye': '眼',
+    'Hand': '手',
+    'Foot': '脚',
+    'Head': '头',
+    'Face': '脸',
+    'Voice': '声音',
+    'Word': '言语',
+    'Song': '歌',
+    'Cry': '嚎叫',
+    'Call': '呼唤',
+    'Echo': '回响',
+    'Whisper': '低语',
+    'Roar': '咆哮',
+    'Silence': '沉默',
+    'Sound': '声音',
+    'Bellow': '咆哮',
+    'Shout': '呐喊',
+    'Scream': '尖叫',
+    'Sigh': '叹息',
+    'Breath': '呼吸',
+    'Wind': '风',
+    'Storm': '风暴',
+    'Rain': '雨',
+    'Snow': '雪',
+    'Frost': '冰霜',
+    'Ice': '冰',
+    'Flame': '烈焰',
+    'Blaze': '烈火',
+    'Ember': '余烬',
+    'Ash': '灰烬',
+    'Smoke': '烟雾',
+    'Dust': '尘埃',
+    'Sand': '沙',
+    'Mud': '泥',
+    'Clay': '粘土',
+    'Rust': '锈',
+    'Gold': '金',
+    'Silver': '银',
+    'Iron': '铁',
+    'Steel': '钢',
+    'Bronze': '青铜',
+    'Copper': '铜',
+    'Lead': '铅',
+    'Tin': '锡',
+    'Metal': '金属',
+    'Alloy': '合金',
+    'Crystal': '水晶',
+    'Gem': '宝石',
+    'Jewel': '珠宝',
+    'Stone': '石头',
+    'Rock': '岩石',
+    'Diamond': '钻石',
+    'Ruby': '红宝石',
+    'Sapphire': '蓝宝石',
+    'Emerald': '绿宝石',
+    'Amber': '琥珀',
+    'Jade': '翡翠',
+    'Pearl': '珍珠',
+    'Ivory': '象牙',
+    'Bone': '骨',
+    'Wood': '木头',
+    'Timber': '木材',
+    'Oak': '橡木',
+    'Pine': '松木',
+    'Cedar': '雪松',
+    'Ebony': '黑檀',
+    'Glass': '玻璃',
+    'Cloth': '布',
+    'Silk': '丝绸',
+    'Cotton': '棉',
+    'Wool': '羊毛',
+    'Leather': '皮革',
+    'Hide': '兽皮',
+    'Fur': '毛皮',
+    'Feather': '羽毛',
+    'Scale': '鳞片',
+    'Shell': '外壳',
+    'Plate': '板甲',
+    'Mail': '锁甲',
+    'Armour': '护甲',
+    'Shield': '盾牌',
+    'Sword': '剑',
+    'Axe': '斧',
+    'Mace': '锤',
+    'Spear': '矛',
+    'Bow': '弓',
+    'Arrow': '箭',
+    'Bolt': '箭矢',
+    'Dagger': '匕首',
+    'Knife': '刀',
+    'Blade': '刃',
+    'Staff': '长杖',
+    'Wand': '法杖',
+    'Sceptre': '权杖',
+    'Rod': '棍棒',
+    'Club': '棍棒',
+    'Flail': '连枷',
+    'Whip': '鞭',
+    'Chain': '锁链',
+    'Rope': '绳索',
+    'Net': '网',
+    'Hook': '钩',
+    'Anchor': '锚',
+    'Cage': '牢笼',
+    'Prison': '监狱',
+    'Tower': '塔',
+    'Wall': '墙',
+    'Gate': '门',
+    'Door': '门',
+    'Window': '窗',
+    'Bridge': '桥',
+    'Road': '路',
+    'Path': '路',
+    'Trail': '小径',
+    'Way': '道',
+    'Journey': '旅程',
+    'Quest': '任务',
+    'Adventure': '冒险',
+    'Legend': '传说',
+    'Myth': '神话',
+    'Tale': '故事',
+    'Story': '故事',
+    'History': '历史',
+    'Memory': '记忆',
+    'Dream': '梦',
+    'Vision': '预见',
+    'Sight': '视野',
+    'Gaze': '凝视',
+    'Glare': '眩光',
+    'Glimpse': '一瞥',
+    'Veil': '面纱',
+    'Mask': '面具',
+    'Crown': '王冠',
+    'Throne': '王座',
+    'Kingdom': '王国',
+    'Empire': '帝国',
+    'Realm': '领域',
+    'Domain': '领域',
+    'Territory': '领地',
+    'Land': '土地',
+    'World': '世界',
+    'Universe': '宇宙',
+    'Reality': '现实',
+    'Dimension': '维度',
+}
+
+
+# ============================================================
+# TRANSLATION FUNCTIONS
+# ============================================================
+
+# Words that are too short/common to safely translate via substring matching.
+# These are excluded from the general term dictionary for free-text translation.
+_SHORT_NOISE = {'per', 'to', 'on', 'if', 'in', 'of', 'or', 'the',
+                'at', 'as', 'is', 'be', 'by', 'it', 'an', 'no', 'so', 'he',
+                'we', 'a', 'i', 'For', 'for', 'The', 'And', 'and',
+                'With', 'with', 'From', 'from', 'Your', 'your', 'You', 'you',
+                'Past', 'past', 'On', 'In', 'Of', 'Or', 'To', 'If', 'Per',
+                '...and', '...And', 'vs', 'as', 'its', 'not', 'but', 'all',
+                'All', 'has', 'had', 'did', 'was', 'may'}
+
+# Safe short words that CAN be translated via word-boundary matching
+_SAFE_SHORT = {
+    'and': '和',
+    'vs': '对',
+    'Low': '低',
+    'low': '低',
+    'All': '全部',
+    'all': '全部',
+    'Hit': '击中',
+    'hit': '击中',
+    'Bow': '弓',
+    'bow': '弓',
+    'One': '一',
+    'Two': '双',
+    'two': '双',
+    'You': '你',
+    'you': '你',
+    'for': '为',
+    'the': '',
+    'The': '',
+    'Self': '自身',
+    'self': '自身',
+    'Axe': '斧',
+    'axe': '斧',
+    'Mace': '锤',
+    'mace': '锤',
+    'Hand': '手',
+    'hand': '手',
+    'Shot': '射击',
+    'shot': '射击',
+    'Kill': '击败',
+    'kill': '击败',
+}
+
+
+def translate_wiki_format(text):
+    """Translate [X|Y] wiki format — translate Y, keep X.
+
+    Within wiki brackets, we CAN do substring matching because the content
+    is structured game terminology, not arbitrary English text.
+    """
+    def replace_wiki(m):
+        parts = m.group(1).split('|')
+        if len(parts) == 2:
+            x, y = parts
+            y_translated = translate_compound(y.strip())
+            return f'[{x}|{y_translated}]'
+        else:
+            inner = m.group(1)
+            inner_translated = translate_compound(inner.strip())
+            return f'[{inner_translated}]'
+    return re.sub(r'\[([^\]]+)\]', replace_wiki, text)
+
+
+def translate_compound(text):
+    """Translate a compound term using longest-match-first replacement.
+    Safe for structured game terms (inside [X|Y] and common patterns)."""
+    if not text:
+        return text
+    if text in STAT_TERMS:
+        return STAT_TERMS[text]
+    result = text
+    for en, zh in sorted(STAT_TERMS.items(), key=lambda x: -len(x[0])):
+        if len(en) <= 3:
+            continue  # skip very short terms that would match inside words
+        if en in _SHORT_NOISE:
+            continue
+        if en in result:
+            result = result.replace(en, zh)
+    return result
+
+
+def translate_text(text):
+    """Translate using word-boundary-aware replacement.
+    Only replaces full-word matches to avoid substring corruption."""
+    if not text:
+        return text
+    if text in DIRECT_NAMES:
+        return DIRECT_NAMES[text]
+    if text in STAT_TERMS:
+        return STAT_TERMS[text]
+
+    result = text
+    # Sort by length (longest first)
+    terms = sorted(STAT_TERMS.items(), key=lambda x: -len(x[0]))
+    for en, zh in terms:
+        if en in _SHORT_NOISE:
+            continue
+        if len(en) <= 3:
+            # Use safe short words only
+            if en in _SAFE_SHORT:
+                zh = _SAFE_SHORT[en]
+            else:
+                continue
+        # Use word boundary to match only complete words/phrases
+        pattern = re.escape(en)
+        if re.search(r'\b' + pattern + r'\b', result):
+            result = re.sub(r'\b' + pattern + r'\b', zh, result)
+
+    # Apply safe short words
+    for en, zh in _SAFE_SHORT.items():
+        pattern = re.escape(en)
+        if re.search(r'\b' + pattern + r'\b', result):
+            result = re.sub(r'\b' + pattern + r'\b', zh, result)
+
+    return result
+
+
+def translate_name(name):
+    """Translate a node name. Exact match first, then term-based."""
+    if not name:
+        return name
+    name = name.strip()
+    if name in DIRECT_NAMES:
+        return DIRECT_NAMES[name]
+    # Use translate_text which now uses word boundaries
+    result = translate_text(name)
+    # Clean up: collapse multiple spaces, remove leading/trailing spaces
+    result = re.sub(r'\s+', ' ', result).strip()
+    return result
+
+
+def translate_stat_string(stat):
+    """Translate a stat string, handling wiki format [X|Y].
+    Wiki-bracket parts get translated via translate_wiki_format,
+    then the non-bracket text gets word-boundary translation."""
+    if not stat:
+        return stat
+    # Step 1: Translate inside wiki brackets [X|Y] → [X|translated_Y]
+    result = translate_wiki_format(stat)
+    # Step 2: Translate text outside brackets, protecting [X|Y] parts
+    # Split into segments: text outside brackets and brackets themselves
+    parts = re.split(r'(\[[^\]]+\])', result)
+    for i, part in enumerate(parts):
+        if not part.startswith('['):
+            parts[i] = translate_text(part)
+    result = ''.join(parts)
+    # Clean up spaces
+    result = re.sub(r'\s+', ' ', result).strip()
+    return result
+
+
+def translate_flavour(text):
+    """Translate flavour text."""
+    return translate_text(text)
+
+
+# ============================================================
+# MAIN TRANSLATION LOGIC
+# ============================================================
+
+def translate_data_block(data):
+    """Translate all translatable content in the poe2-data JSON."""
+    # Translate class names
+    CLASS_CN = {
+        'Warrior': '战士', 'Sorceress': '女术士', 'Huntress': '猎手',
+        'Mercenary': '佣兵', 'Monk': '武僧', 'Druid': '德鲁伊',
+        'Marauder': '野蛮人', 'Witch': '女巫', 'Ranger': '游侠',
+        'Duelist': '决斗者', 'Shadow': '暗影', 'Templar': '圣堂武士',
+    }
+    ASC_CN = {
+        'Titan': '泰坦', 'Warbringer': '战火使者', 'Smith of Kitava': '奇塔弗之锻工',
+        'Stormweaver': '风暴编织者', 'Chronomancer': '时空术士',
+        'Disciple of Varashta': '瓦拉斯塔信徒',
+        'Amazon': '亚马逊', 'Spirit Walker': '灵魂行者', 'Ritualist': '仪式者',
+        'Tactician': '战术家', 'Witchhunter': '猎巫者',
+        'Gemling Legionnaire': '宝石军团兵',
+        'Martial Artist': '武者', 'Invoker': '祈唤者',
+        'Acolyte of Chayula': '查尤拉之追随者',
+        'Deadeye': '锐眼', 'Pathfinder': '寻路者',
+        'Infernalist': '地狱术士', 'Blood Mage': '血法师',
+        'Lich': '巫妖', 'Abyssal Lich': '深渊巫妖',
+        'Oracle': '神谕', 'Shaman': '萨满',
+    }
+
+    if 'classes' in data:
+        for c in data['classes']:
+            if c.get('name') in CLASS_CN:
+                c['name'] = CLASS_CN[c['name']]
+
+    if 'ascendancyNames' in data:
+        for key, val in data['ascendancyNames'].items():
+            if val and val in ASC_CN:
+                data['ascendancyNames'][key] = ASC_CN[val]
+
+    # Translate node data
+    if 'nodes' in data:
+        node_count = len(data['nodes'])
+        for i, (node_id, node) in enumerate(data['nodes'].items()):
+            if node.get('name'):
+                node['name'] = translate_name(node['name'])
+
+            if node.get('stats'):
+                node['stats'] = [translate_stat_string(s) for s in node['stats']]
+
+            if node.get('oldStats'):
+                node['oldStats'] = [translate_stat_string(s) for s in node['oldStats']]
+
+            if node.get('oldName'):
+                node['oldName'] = translate_name(node['oldName'])
+
+            if node.get('flavour'):
+                node['flavour'] = [translate_flavour(f) for f in node['flavour']]
+
+            if node.get('reminder'):
+                node['reminder'] = [translate_flavour(r) for r in node['reminder']]
+
+            if node.get('grantsName'):
+                node['grantsName'] = translate_text(node['grantsName'])
+
+    return data
+
+
+def translate_jump_block(jump):
+    """Translate class/ascendancy names in the poe2-jump JSON."""
+    CLASS_CN = {
+        'Warrior': '战士', 'Sorceress': '女术士', 'Huntress': '猎手',
+        'Mercenary': '佣兵', 'Monk': '武僧', 'Druid': '德鲁伊',
+        'Marauder': '野蛮人', 'Witch': '女巫', 'Ranger': '游侠',
+        'Duelist': '决斗者', 'Shadow': '暗影', 'Templar': '圣堂武士',
+    }
+    ASC_CN = {
+        'Titan': '泰坦', 'Warbringer': '战火使者', 'Smith of Kitava': '奇塔弗之锻工',
+        'Stormweaver': '风暴编织者', 'Chronomancer': '时空术士',
+        'Disciple of Varashta': '瓦拉斯塔信徒',
+        'Amazon': '亚马逊', 'Spirit Walker': '灵魂行者', 'Ritualist': '仪式者',
+        'Tactician': '战术家', 'Witchhunter': '猎巫者',
+        'Gemling Legionnaire': '宝石军团兵',
+        'Martial Artist': '武者', 'Invoker': '祈唤者',
+        'Acolyte of Chayula': '查尤拉之追随者',
+        'Deadeye': '锐眼', 'Pathfinder': '寻路者',
+        'Infernalist': '地狱术士', 'Blood Mage': '血法师',
+        'Lich': '巫妖', 'Abyssal Lich': '深渊巫妖',
+        'Oracle': '神谕', 'Shaman': '萨满',
+    }
+
+    if 'classes' in jump:
+        for c in jump['classes']:
+            if c.get('name') in CLASS_CN:
+                c['name'] = CLASS_CN[c['name']]
+
+    if 'ascendancies' in jump:
+        for a in jump['ascendancies']:
+            if a.get('name') in ASC_CN:
+                a['name'] = ASC_CN[a['name']]
+
+    return jump
+
+
+def translate_html(content):
+    """Apply all HTML/JS-level string replacements."""
+
+    replacements = [
+        # HTML meta
+        ('<html lang="en">', '<html lang="zh-CN">'),
+        ('<title>Passive Skill Tree — Path of Exile 2 (v0.5.0)</title>',
+         '<title>被动技能树 — 流放之路 2 (v0.5.0)</title>'),
+
+        # Loading text
+        ('Forging the Atlas of Passives', '正在锻造被动天赋图集...'),
+
+        # Title
+        ('Path of Exile <span style="opacity:.6">II</span> — Passive Tree',
+         '流放之路 <span style="opacity:.6">II</span> — 被动天赋树'),
+
+        # Subtitle
+        ('export v0.5.0 · 5,102 nodes · with original icons and frames',
+         '导出 v0.5.0 · 5,102 个节点 · 含原始图标与边框'),
+
+        # Search placeholder
+        ('placeholder="Search node by name or modifier…"',
+         'placeholder="按名称或词缀搜索节点…"'),
+
+        # Jump dropdown
+        ('<option value="">Jump to…</option>',
+         '<option value="">跳转到…</option>'),
+
+        # Legend title
+        ('<h3>Filters · click to toggle</h3>',
+         '<h3>筛选 · 点击切换</h3>'),
+
+        # Zoom buttons
+        ('title="Zoom in"', 'title="放大"'),
+        ('title="Zoom out"', 'title="缩小"'),
+        ('title="Fit to screen"', 'title="适应屏幕"'),
+        ('title="Center"', 'title="居中"'),
+
+        # JS: KIND_INFO labels
+        ("label: 'Class start'", "label: '职业起点'"),
+        ("label: 'Ascendancy start'", "label: '进阶起点'"),
+        ("label: 'Keystones'", "label: '核心天赋'"),
+        ("label: 'Notables'", "label: '关键天赋'"),
+        ("label: 'Masteries'", "label: '专精'"),
+        ("label: 'Jewel sockets'", "label: '珠宝插槽'"),
+        ("label: 'Ascendancy nodes'", "label: '进阶节点'"),
+        ("label: 'Small nodes'", "label: '小型节点'"),
+
+        # JS: Jump dropdown labels
+        ("cg.label = 'Classes'", "cg.label = '职业'"),
+        ("grp.label = `${cls} · ascendancies`",
+         "grp.label = `${CLASS_NAME_CN[cls] || cls} · 进阶`"),
+
+        # JS: Highlight legend
+        ("t.textContent = 'Highlights'", "t.textContent = '高亮'"),
+        ("highlightRow('#ff7adb', null, 'New in v0.5',            nNew)",
+         "highlightRow('#ff7adb', null, 'v0.5 新增',            nNew)"),
+        ("highlightRow('#a8e84a', null, 'Changed v0.4 → v0.5',    nChanged)",
+         "highlightRow('#a8e84a', null, 'v0.4 → v0.5 改动',    nChanged)"),
+        ("highlightRow('#7ad8ff', null, 'Druid+Oracle exclusive', nOracle)",
+         "highlightRow('#7ad8ff', null, '德鲁伊+神谕专属', nOracle)"),
+
+        # JS: Tooltip strings
+        ("<h2>${n.name ? escapeHTML(n.name) : '<em style=\"color:var(--ink-mute)\">(no name)</em>'}</h2>",
+         "<h2>${n.name ? escapeHTML(n.name) : '<em style=\"color:var(--ink-mute)\">（未命名）</em>'}</h2>"),
+        ("Grants gem: <b>", "赋予技能宝石：<b>"),
+        ("<div class=\"head\">Before (v0.4)</div>",
+         "<div class=\"head\">旧版 (v0.4)</div>"),
+        ("<div class=\"head\" style=\"color:#ffb8df\">New in v0.5</div>",
+         "<div class=\"head\" style=\"color:#ffb8df\">v0.5 新增</div>"),
+
+        # JS: Add CLASS_NAME_CN mapping before the ascendancies loop
+        ("const ascByClass = {};",
+         "const CLASS_NAME_CN={Warrior:'战士',Sorceress:'女术士',Huntress:'猎手',Mercenary:'佣兵',Monk:'武僧',Druid:'德鲁伊',Marauder:'野蛮人',Witch:'女巫',Ranger:'游侠',Duelist:'决斗者',Shadow:'暗影',Templar:'圣堂武士'};\nconst ascByClass = {};"),
+
+        # toLocaleString
+        ("toLocaleString('en-US')", "toLocaleString('zh-CN')"),
+
+        # Font: add Chinese font fallback
+        ('"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif',
+         '"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,"Microsoft YaHei","Noto Sans SC","PingFang SC",sans-serif'),
+    ]
+
+    for old, new in replacements:
+        if old in content:
+            content = content.replace(old, new)
+        else:
+            print(f"WARNING: Could not find: {old[:80]}...")
+
+    return content
+
+
+def main():
+    print(f"Reading {SRC}...")
+    with open(SRC, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Step 1: Extract and translate poe2-data JSON
+    print("Translating poe2-data...")
+    m = re.search(r'(<script id="poe2-data"\s+type="application/json">)(.*?)(</script>)', content, re.DOTALL)
+    if m:
+        json_str = m.group(2)
+        data = json.loads(json_str)
+        data = translate_data_block(data)
+        new_json = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+        content = content[:m.start(2)] + new_json + content[m.end(2):]
+    else:
+        print("ERROR: Could not find poe2-data block!")
+        sys.exit(1)
+
+    # Step 2: Extract and translate poe2-jump JSON
+    print("Translating poe2-jump...")
+    m = re.search(r'(<script id="poe2-jump"\s+type="application/json">)(.*?)(</script>)', content, re.DOTALL)
+    if m:
+        json_str = m.group(2)
+        jump = json.loads(json_str)
+        jump = translate_jump_block(jump)
+        new_json = json.dumps(jump, ensure_ascii=False, separators=(',', ':'))
+        content = content[:m.start(2)] + new_json + content[m.end(2):]
+    else:
+        print("ERROR: Could not find poe2-jump block!")
+        sys.exit(1)
+
+    # Step 3: Apply HTML/JS string replacements
+    print("Translating HTML/JS strings...")
+    content = translate_html(content)
+
+    # Step 4: Fix any JSON escape issues that might have been introduced
+    # (shouldn't happen with ensure_ascii=False, but just in case)
+
+    # Step 5: Write output
+    print(f"Writing {DST}...")
+    with open(DST, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    print("Done!")
+    print(f"  Source: {SRC} ({SRC.stat().st_size:,} bytes)")
+    print(f"  Output: {DST} ({DST.stat().st_size:,} bytes)")
+
+
+if __name__ == '__main__':
+    main()

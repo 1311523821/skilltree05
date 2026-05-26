@@ -1,32 +1,33 @@
-# PoE 2 Passive Tree Viewer
- 
-Single-file HTML viewer for the Path of Exile 2 passive skill tree (v0.5.0). 
-  
-## Usage
+# 流放之路 2 被动天赋树查看器
 
-Open `poe2-passive-tree.html` in any modern browser. Everything is embedded — no server, no install.  
+Path of Exile 2 被动技能树的单文件 HTML 查看器（v0.5.0）。
 
-## Features
+## 使用方法
 
-- Pan and zoom over all 5,102 nodes
-- Search by node name or modifier
-- Jump to any class or ascendancy from the dropdown
-- Filter by node type (notable, keystone, mastery, etc.)
-- Hover any node to see its info above it; click to pin
+在任何现代浏览器中打开 `poe2-passive-tree_8.zh-CN.html`（中文版）或 `poe2-passive-tree_8.html`（英文版）。所有内容均已内嵌 — 无需服务器，无需安装。
 
-## Highlights
+## 功能
 
-Three categories of nodes are color-coded on the tree:
+- 在所有 5,102 个节点上进行平移和缩放
+- 按节点名称或词缀搜索
+- 从下拉菜单跳转到任意职业或进阶
+- 按节点类型筛选（关键天赋、核心天赋、专精等）
+- 悬停节点查看信息；点击固定
 
-- 🟣 **New in v0.5** — 148 nodes (skill IDs that did not exist in v0.4)
-- 🟢 **Changed v0.4 → v0.5** — 183 nodes (numerical buffs or nerfs only; pure wording changes are filtered out)
-- 🔵 **Druid+Oracle exclusive** — 197 nodes (only accessible to Druid ascending into Oracle)
+## 高亮
 
-For nodes in the "Changed" category, the tooltip shows the v0.4 stats struck through next to the new v0.5 stats.
+树上有三类节点以颜色区分：
 
-## Data
+- 🟣 **v0.5 新增** — 148 个节点（v0.4 中不存在的技能 ID）
+- 🟢 **v0.4 → v0.5 改动** — 183 个节点（仅数值增强或削弱；纯文本改动已过滤）
+- 🔵 **德鲁伊+神谕专属** — 197 个节点（仅德鲁伊进阶神谕后可访问）
 
-Built from the official Grinding Gear Games exports: [`poe2-skilltree-export`](https://github.com/grindinggear/poe2-skilltree-export), versions 0.4.0 and 0.5.0.
+对于"改动"类别中的节点，提示框会在新版 v0.5 属性旁边以删除线显示 v0.4 旧版属性。
 
+## 数据来源
 
+基于 Grinding Gear Games 官方导出数据构建：[`poe2-skilltree-export`](https://github.com/grindinggear/poe2-skilltree-export)，版本 0.4.0 和 0.5.0。
 
+## 翻译
+
+中文版由翻译脚本 `translate_tree.py` 自动生成，覆盖了 UI 界面、职业/进阶名称、以及大部分节点名称和属性。如需更新到新版本，可重新运行该脚本。
