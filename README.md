@@ -1,7 +1,7 @@
 # PoE 2 Passive Tree Viewer
 
 Single-file HTML viewer for the Path of Exile 2 passive skill tree (v0.5.0).
-
+You can use the online version of my project too (thanks to whoever made that) : https://natwarth.github.io/poe2-skilltree/ 
 ## Usage
 
 Open `poe2-passive-tree.html` in any modern browser. Everything is embedded — no server, no install.
